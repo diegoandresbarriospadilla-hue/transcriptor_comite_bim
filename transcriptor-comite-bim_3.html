@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transcriptor · Comité de Obra BIM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2026;
+    --border: #2a2d35;
+    --border2: #363a45;
+    --accent: #e8c547;
+    --accent2: #f0d96a;
+    --accent-dim: rgba(232,197,71,0.12);
+    --accent-dim2: rgba(232,197,71,0.06);
+    --text: #eceef2;
+    --text2: #9198a8;
+    --text3: #5c6270;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --teal: #2dd4bf;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.6; }
+  .app { display: grid; grid-template-rows: 64px 1fr; min-height: 100vh; }
+
+  /* HEADER */
+  header { border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 28px; gap: 16px; background: var(--bg); position: sticky; top: 0; z-index: 100; }
+  .logo-mark { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: #0e0f11; flex-shrink: 0; }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: -0.02em; }
+  .logo-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; letter-spacing: 0.06em; text-transform: uppercase; }
+  .api-status { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; flex-shrink: 0; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* LAYOUT */
+  .main { display: grid; grid-template-columns: 305px 1fr; height: calc(100vh - 64px); }
+  .left-panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; background: var(--surface); }
+  .panel-section { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .section-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+
+  /* FORM ELEMENTS */
+  .fi { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.2s; }
+  .fi:focus { border-color: var(--accent); }
+  .fi::placeholder { color: var(--text3); }
+  .di { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; color: var(--text); font-size: 12px; outline: none; margin-bottom: 6px; transition: border-color 0.2s; font-family: 'DM Sans', sans-serif; }
+  .di:focus { border-color: var(--accent); }
+  .di::placeholder { color: var(--text3); font-size: 11px; }
+  .hint { margin-top: 7px; font-size: 11px; color: var(--text3); line-height: 1.5; }
+  .hint a { color: var(--accent); text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+  .eye-wrap { position: relative; }
+  .eye-wrap .fi { padding-right: 34px; }
+  .eye-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; }
+
+  /* METHOD TOGGLE */
+  .mtoggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 10px; }
+  .mbtn { flex: 1; padding: 6px 4px; border: none; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; background: none; color: var(--text3); transition: all 0.15s; text-align: center; white-space: nowrap; }
+  .mbtn.active { background: var(--accent); color: #0e0f11; font-weight: 500; }
+
+  /* DROP ZONE */
+  .dropzone { border: 1.5px dashed var(--border2); border-radius: 10px; padding: 18px 12px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface2); }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-dim2); }
+  .drop-icon { font-size: 22px; margin-bottom: 6px; }
+  .drop-text { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .drop-text strong { color: var(--accent); }
+  #file-input { display: none; }
+  .file-info { display: none; margin-top: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+  .file-info.show { display: block; }
+  .file-name { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--accent); word-break: break-all; }
+  .file-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* WARNING BOX */
+  .warn-box { display: none; background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); border-radius: 8px; padding: 11px; margin-top: 8px; font-size: 11px; color: var(--red); line-height: 1.6; }
+  .warn-box.show { display: block; }
+  .warn-box strong { color: var(--orange); }
+  .info-box { background: rgba(232,197,71,0.06); border: 1px solid rgba(232,197,71,0.15); border-radius: 8px; padding: 11px; margin-bottom: 8px; font-size: 11px; color: var(--text2); line-height: 1.6; }
+  .info-box strong { color: var(--accent); }
+  .info-box code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent2); }
+
+  /* URL METHOD */
+  .url-method { display: none; }
+  .url-method.active { display: block; }
+
+  /* SPEAKERS */
+  .sp-row { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; margin-bottom: 5px; }
+  .sp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sp-letter { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); min-width: 14px; }
+  .sp-name { background: none; border: none; color: var(--text); font-size: 12px; outline: none; flex: 1; min-width: 0; }
+  .sp-name::placeholder { color: var(--text3); }
+  .sp-co { background: none; border: none; color: var(--text3); font-size: 11px; outline: none; max-width: 82px; }
+  .sp-co::placeholder { color: var(--text3); font-size: 10px; }
+  .sca { background: var(--accent); } .scb { background: var(--blue); } .scc { background: var(--green); }
+  .scd { background: var(--orange); } .sce { background: var(--purple); } .scf { background: var(--teal); } .scg { background: var(--red); }
+
+  /* BUTTONS */
+  .btn-p { width: 100%; background: var(--accent); color: #0e0f11; border: none; border-radius: 9px; padding: 11px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+  .btn-p:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-p:active { transform: translateY(0); }
+  .btn-p:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; transform: none; }
+  .btn-s { background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); border-radius: 7px; padding: 7px 14px; font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+  .btn-s:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* PROGRESS */
+  .prog-box { display: none; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px; margin-top: 10px; }
+  .prog-box.show { display: block; }
+  .prog-header { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .prog-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.5s ease; }
+  .prog-detail { margin-top: 6px; font-size: 11px; color: var(--text3); }
+
+  /* RIGHT PANEL */
+  .right-panel { display: flex; flex-direction: column; overflow: hidden; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 20px; gap: 2px; }
+  .tab { padding: 14px 16px 12px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tc { display: inline-block; background: rgba(232,197,71,0.12); color: var(--accent); border-radius: 4px; padding: 0 5px; font-size: 10px; margin-left: 4px; }
+  .tab-pane { flex: 1; overflow-y: auto; padding: 24px; display: none; }
+  .tab-pane.active { display: block; }
+
+  /* EMPTY STATE */
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; gap: 10px; color: var(--text3); text-align: center; }
+  .empty-icon { font-size: 36px; opacity: 0.3; }
+  .empty-label { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 600; }
+  .empty-sub { font-size: 12px; max-width: 300px; line-height: 1.6; }
+
+  /* UTTERANCES */
+  .utt { display: flex; gap: 12px; margin-bottom: 16px; animation: fu 0.25s ease; }
+  @keyframes fu { from { opacity:0; transform:translateY(4px); } to { opacity:1; } }
+  .utt-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; flex-shrink: 0; margin-top: 2px; color: #0e0f11; }
+  .utt-bd { flex: 1; }
+  .utt-hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+  .utt-nm { font-size: 12px; font-weight: 500; font-family: 'DM Mono', monospace; }
+  .utt-co { font-size: 10px; color: var(--text3); background: var(--surface2); padding: 1px 6px; border-radius: 4px; }
+  .utt-ts { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .utt-tx { font-size: 13.5px; color: var(--text2); line-height: 1.65; }
+
+  /* PROMPT */
+  .prompt-info { background: rgba(232,197,71,0.06); border: 1px solid rgba(232,197,71,0.15); border-radius: 10px; padding: 13px; margin-bottom: 13px; font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .prompt-info strong { color: var(--accent); }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 13px; flex-wrap: wrap; }
+  .copy-area { position: relative; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 12px; color: var(--text2); white-space: pre-wrap; line-height: 1.65; font-family: 'DM Mono', monospace; max-height: 480px; overflow-y: auto; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface2); border: 1px solid var(--border2); color: var(--text3); border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ACTA */
+  .acta-out { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 24px; font-size: 13.5px; line-height: 1.8; color: var(--text2); white-space: pre-wrap; font-family: 'DM Sans', sans-serif; }
+  .gen-ind { display: none; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(232,197,71,0.06); border: 1px solid rgba(232,197,71,0.15); border-radius: 8px; margin-bottom: 12px; font-size: 12px; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .gen-ind.show { display: flex; }
+
+  /* MISC */
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(0,0,0,0.15); border-top-color: #0e0f11; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .spinner-y { border: 2px solid var(--border2); border-top-color: var(--accent); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .toasts { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+  .toast { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--text); box-shadow: 0 8px 32px rgba(0,0,0,0.4); animation: si 0.25s ease; max-width: 320px; line-height: 1.4; }
+  .toast.ok { border-left: 3px solid var(--green); }
+  .toast.err { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  @keyframes si { from { opacity:0; transform:translateX(20px); } to { opacity:1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo-mark">BIM</div>
+    <div class="logo-text">Transcriptor de Comités</div>
+    <span class="logo-sub">SBOCQ · CONTECAR · Bodega de Café</span>
+    <div class="api-status">
+      <div class="status-dot" id="sDot"></div>
+      <span id="sTxt">sin clave</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- ══ LEFT ══ -->
+    <div class="left-panel">
+
+      <!-- 01 API KEY -->
+      <div class="panel-section">
+        <div class="section-label">01 · API Key AssemblyAI</div>
+        <div class="eye-wrap">
+          <input type="password" class="fi" id="apiKey" placeholder="Pega tu API key aquí…" oninput="onKey()">
+          <button class="eye-btn" onclick="toggleEye()">👁</button>
+        </div>
+        <p class="hint">
+          <a href="https://www.assemblyai.com/" target="_blank">assemblyai.com</a> → Sign up → Dashboard → API Key<br>
+          Incluye $50 en créditos gratuitos (~330 horas de audio)
+        </p>
+      </div>
+
+      <!-- 02 AUDIO -->
+      <div class="panel-section">
+        <div class="section-label">02 · Audio del Comité (Google Drive)</div>
+        <div class="info-box">
+          <strong>Cómo subir el audio cada semana:</strong><br>
+          1. Sube el MP3 a Google Drive<br>
+          2. Clic derecho → Compartir → <strong>"Cualquiera con el enlace"</strong><br>
+          3. Copia el enlace y pégalo abajo — la app lo convierte automáticamente
+        </div>
+        <input class="fi" id="audioUrl" placeholder="https://drive.google.com/file/d/.../view" style="font-size:11px;padding:8px 10px" oninput="onUrl()">
+        <div id="urlPreview" style="display:none;margin-top:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--green);word-break:break-all;line-height:1.5"></div>
+      </div>
+
+      <!-- 03 PARTICIPANTES -->
+      <div class="panel-section">
+        <div class="section-label">03 · Participantes</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5">
+          Escribe nombre y empresa de cada orador. Puedes completar después de ver la transcripción.
+        </div>
+        <div id="spList"></div>
+        <button class="btn-s" onclick="addSp()" style="width:100%;margin-top:4px">+ Agregar orador</button>
+      </div>
+
+      <!-- 04 DATOS -->
+      <div class="panel-section">
+        <div class="section-label">04 · Datos del Comité</div>
+        <input class="di" id="numC" placeholder="N° de Comité (ej: 019)">
+        <input class="di" id="fechaC" type="date">
+        <input class="di" id="lugarC" placeholder="Lugar / Modalidad">
+      </div>
+
+      <!-- 05 START -->
+      <div class="panel-section">
+        <div class="section-label">05 · Iniciar</div>
+        <button class="btn-p" id="startBtn" onclick="start()" disabled>Transcribir Audio</button>
+        <div class="prog-box" id="progBox">
+          <div class="prog-header">
+            <span id="progStep">Iniciando…</span>
+            <span id="progPct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+          <div class="prog-detail" id="progDetail"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RIGHT ══ -->
+    <div class="right-panel">
+      <div class="tabs">
+        <div class="tab active" data-t="transcript" onclick="goTab(this)">
+          Transcripción <span class="tc" id="uttC" style="display:none">0</span>
+        </div>
+        <div class="tab" data-t="prompt" onclick="goTab(this)">Prompt para Claude</div>
+        <div class="tab" data-t="acta" onclick="goTab(this)">Acta Generada</div>
+      </div>
+
+      <!-- TRANSCRIPT -->
+      <div class="tab-pane active" id="pane-transcript">
+        <div class="empty" id="emT">
+          <div class="empty-icon">📋</div>
+          <div class="empty-label">Sin transcripción aún</div>
+          <div class="empty-sub">Configura tu API key, carga el audio y presiona <strong>Transcribir Audio</strong></div>
+        </div>
+        <div id="tBody" style="display:none"></div>
+      </div>
+
+      <!-- PROMPT -->
+      <div class="tab-pane" id="pane-prompt">
+        <div class="empty" id="emP">
+          <div class="empty-icon">🤖</div>
+          <div class="empty-label">Primero transcribe el audio</div>
+          <div class="empty-sub">Aquí aparecerá el prompt listo para pegar en Claude y generar el acta.</div>
+        </div>
+        <div id="pBody" style="display:none">
+          <div class="prompt-info">
+            <strong>¿Cómo usar?</strong> Copia el texto → ve a <strong>Claude.ai</strong> → pega → Enter.<br>
+            Claude leerá toda la transcripción y generará el acta completa y estructurada.
+          </div>
+          <div class="toolbar">
+            <button class="btn-s" onclick="copyPrompt()">📋 Copiar prompt</button>
+            <button class="btn-s" onclick="genActa()">✨ Generar acta aquí</button>
+          </div>
+          <div class="copy-area" id="pArea">
+            <button class="copy-btn" onclick="copyPrompt()">Copiar</button>
+            <span id="pText"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTA -->
+      <div class="tab-pane" id="pane-acta">
+        <div class="empty" id="emA">
+          <div class="empty-icon">📄</div>
+          <div class="empty-label">Acta no generada</div>
+          <div class="empty-sub">Ve a <strong>Prompt para Claude</strong> y usa el botón <strong>✨ Generar acta aquí</strong>.</div>
+        </div>
+        <div id="aBody" style="display:none">
+          <div class="toolbar">
+            <button class="btn-s" onclick="copyActa()">📋 Copiar acta</button>
+            <button class="btn-s" onclick="dlActa()">⬇ Descargar .txt</button>
+          </div>
+          <div class="gen-ind" id="genInd">
+            <div class="spinner spinner-y"></div> Generando acta con Claude…
+          </div>
+          <div class="acta-out" id="aText"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── STATE ──
+let audioFile = null, audioUrl = '', method = 'url';
+let txData = null, spIdx = 0, acta = '';
+const API = 'https://api.assemblyai.com';
+const STORED_KEY = '91e0bc32f36043339e8f64894ec88c6d';
+const LETTERS = ['A','B','C','D','E','F','G'];
+const DOTS = ['sca','scb','scc','scd','sce','scf','scg'];
+const AVARS = {A:'accent',B:'blue',C:'green',D:'orange',E:'purple',F:'teal',G:'red'};
+const DCOLS = {A:'sca',B:'scb',C:'scc',D:'scd',E:'sce',F:'scf',G:'scg'};
+
+function driveToDirectUrl(input) {
+  // Acepta link de Drive y lo convierte a enlace de descarga directa
+  const m = input.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  if (input.includes('uc?export=download')) return input; // ya es directo
+  return input;
+}
+
+// ── INIT ──
+window.onload = () => {
+  // Precarga API key
+  const keyInput = document.getElementById('apiKey');
+  keyInput.value = STORED_KEY;
+  onKey();
+
+  addSp(); addSp(); addSp();
+  const phs = [
+    ['Nombre del orador','Interventoría (SBOCQ)'],
+    ['Nombre del orador','Constructora'],
+    ['Nombre del orador','Contecar']
+  ];
+  ['A','B','C'].forEach((l,i) => {
+    const n = document.getElementById(`sn-${l}`);
+    const c = document.getElementById(`sc-${l}`);
+    if (n) n.placeholder = phs[i][0];
+    if (c) c.placeholder = phs[i][1];
+  });
+  document.getElementById('fechaC').value = new Date().toISOString().split('T')[0];
+};
+
+// ── TOAST ──
+function toast(msg, type='info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
+// ── TABS ──
+function goTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pane-' + el.dataset.t).classList.add('active');
+}
+function gotoTab(name) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.t === name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(t => {
+    t.classList.toggle('active', t.id === 'pane-' + name);
+  });
+}
+
+// ── API KEY ──
+function onKey() {
+  const ok = document.getElementById('apiKey').value.trim().length > 20;
+  document.getElementById('sDot').className = 'status-dot' + (ok ? ' ok' : '');
+  document.getElementById('sTxt').textContent = ok ? 'key lista' : 'sin clave';
+  updateBtn();
+}
+function toggleEye() {
+  const i = document.getElementById('apiKey');
+  i.type = i.type === 'password' ? 'text' : 'password';
+}
+
+
+function onUrl() {
+  const raw = document.getElementById('audioUrl').value.trim();
+  audioUrl = driveToDirectUrl(raw);
+  const preview = document.getElementById('urlPreview');
+  if (audioUrl !== raw && audioUrl.length > 10) {
+    preview.style.display = 'block';
+    preview.textContent = '✓ URL convertida: ' + audioUrl;
+  } else {
+    preview.style.display = 'none';
+  }
+  updateBtn();
+}
+function updateBtn() {
+  const hasKey = document.getElementById('apiKey').value.trim().length > 20;
+  const hasAud = audioUrl.length > 10;
+  document.getElementById('startBtn').disabled = !(hasKey && hasAud);
+}
+
+// ── SPEAKERS ──
+function addSp() {
+  const l = LETTERS[spIdx % LETTERS.length];
+  const d = DOTS[spIdx % DOTS.length];
+  spIdx++;
+  const row = document.createElement('div');
+  row.className = 'sp-row';
+  row.id = `sp-${l}`;
+  row.innerHTML = `
+    <div class="sp-dot ${d}"></div>
+    <span class="sp-letter">${l}</span>
+    <input class="sp-name" id="sn-${l}" placeholder="Nombre">
+    <input class="sp-co" id="sc-${l}" placeholder="Empresa">
+  `;
+  document.getElementById('spList').appendChild(row);
+}
+function spName(id) {
+  const el = document.getElementById(`sn-${id}`);
+  return el && el.value.trim() ? el.value.trim() : `Orador ${id}`;
+}
+function spCo(id) {
+  const el = document.getElementById(`sc-${id}`);
+  if (!el) return '';
+  return el.value.trim() || el.placeholder || '';
+}
+
+// ── PROGRESS ──
+function prog(step, pct, detail='') {
+  document.getElementById('progBox').classList.add('show');
+  document.getElementById('progStep').textContent = step;
+  document.getElementById('progPct').textContent = pct+'%';
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progDetail').textContent = detail;
+}
+
+// ── MAIN FLOW ──
+async function start() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>Procesando…';
+
+  try {
+    prog('Solicitando transcripción…', 20, 'Enviando URL a AssemblyAI…');
+    const tid = await reqTranscript(apiKey, audioUrl);
+    toast('Transcripción iniciada…', 'info');
+
+    prog('Transcribiendo…', 40, 'AssemblyAI está procesando. Esto puede tomar varios minutos…');
+    const result = await pollUntilDone(apiKey, tid);
+
+    prog('¡Completado!', 100, 'Transcripción lista');
+    toast('¡Transcripción lista! ✓', 'ok');
+    txData = result;
+    renderTx(result);
+    buildPrompt(result);
+
+  } catch (err) {
+    const msg = err.message || 'Error desconocido';
+    prog('Error', 0, msg);
+    toast('Error: ' + msg, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Transcribir Audio';
+    updateBtn();
+  }
+}
+
+async function reqTranscript(apiKey, url) {
+  const r = await fetch(`${API}/v1/transcript`, {
+    method: 'POST',
+    headers: { 'authorization': apiKey, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      audio_url: url,
+      speaker_labels: true,
+      language_code: 'es',
+      punctuate: true,
+      format_text: true,
+      speakers_expected: Math.max(spIdx, 3)
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error || `Error ${r.status} al solicitar transcripción`);
+  }
+  return (await r.json()).id;
+}
+
+async function pollUntilDone(apiKey, id) {
+  let pct = 44;
+  while (true) {
+    await new Promise(r => setTimeout(r,5000));
+    const r = await fetch(`${API}/v1/transcript/${id}`, { headers: {'authorization':apiKey} });
+    if (!r.ok) throw new Error(`Error consultando estado: ${r.status}`);
+    const d = await r.json();
+    if (d.status==='completed') return d;
+    if (d.status==='error') throw new Error(d.error||'Error en la transcripción');
+    pct = Math.min(pct+2, 90);
+    prog('Transcribiendo audio…', pct, `Estado: ${d.status}…`);
+  }
+}
+
+// ── RENDER TRANSCRIPT ──
+function renderTx(data) {
+  const utts = data.utterances||[];
+  const el = document.getElementById('uttC');
+  el.textContent = utts.length;
+  el.style.display = '';
+
+  const body = document.getElementById('tBody');
+  body.innerHTML = '';
+
+  utts.forEach(u => {
+    const name = spName(u.speaker);
+    const co = spCo(u.speaker);
+    const ts = fmtT(u.start/1000);
+    const dc = DCOLS[u.speaker]||'sca';
+    const av = AVARS[u.speaker]||'text2';
+    const div = document.createElement('div');
+    div.className = 'utt';
+    div.innerHTML = `
+      <div class="utt-av ${dc}">${u.speaker}</div>
+      <div class="utt-bd">
+        <div class="utt-hd">
+          <span class="utt-nm" style="color:var(--${av})">${name}</span>
+          ${co?`<span class="utt-co">${co}</span>`:''}
+          <span class="utt-ts">${ts}</span>
+        </div>
+        <div class="utt-tx">${u.text}</div>
+      </div>`;
+    body.appendChild(div);
+  });
+
+  document.getElementById('emT').style.display = 'none';
+  body.style.display = 'block';
+  gotoTab('transcript');
+}
+
+function fmtT(s) {
+  const m=Math.floor(s/60), sec=Math.floor(s%60);
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ── BUILD PROMPT ──
+function buildPrompt(data) {
+  const utts = data.utterances||[];
+  const speakers = [...new Set(utts.map(u=>u.speaker))];
+  const numC = document.getElementById('numC').value||'___';
+  const fecha = document.getElementById('fechaC').value||'___';
+  const lugar = document.getElementById('lugarC').value||'Bodega de Café – Contecar, Cartagena';
+
+  const spMap = speakers.map(id=>`  - Orador ${id}: ${spName(id)} (${spCo(id)})`).join('\n');
+  const tx = utts.map(u=>`[${fmtT(u.start/1000)}] ${spName(u.speaker)}: ${u.text}`).join('\n\n');
+
+  const prompt =
+`Eres el asistente de documentación de proyectos de construcción. Genera el ACTA DE COMITÉ DE OBRA completa con base en la transcripción adjunta.
+
+━━━ INFORMACIÓN DEL COMITÉ ━━━
+Proyecto: Bodega de Café – Terminal de Contecar, Cartagena
+Comité N°: ${numC}
+Fecha: ${fecha}
+Lugar: ${lugar}
+Interventoría: SBOCQ
+Cliente: Contecar
+
+━━━ PARTICIPANTES ━━━
+${spMap}
+
+━━━ INSTRUCCIONES ━━━
+
+Genera el acta con estas secciones:
+
+1. ENCABEZADO: N° de acta, fecha, lugar, proyecto, lista de asistentes con cargo y empresa.
+
+2. ORDEN DEL DÍA: Temas tratados (numerados), inferidos de la transcripción.
+
+3. DESARROLLO: Resumen por temas. Indica quién dijo qué, decisiones tomadas, acuerdos y observaciones importantes.
+
+4. COMPROMISOS Y ACCIONES: Tabla: N° | Descripción | Responsable | Empresa | Fecha límite. Extrae TODOS los compromisos y tareas mencionados.
+
+5. SEGUIMIENTO DE COMPROMISOS ANTERIORES: Si se mencionan, listarlos con estado (Cumplido / Pendiente / En proceso).
+
+6. OBSERVACIONES GENERALES.
+
+7. CIERRE: Hora de cierre, próxima reunión, campos de firma.
+
+Formato profesional en español. Si algo no está claro, indica [VERIFICAR].
+
+━━━ TRANSCRIPCIÓN ━━━
+
+${tx}
+
+━━━ FIN ━━━`;
+
+  document.getElementById('pText').textContent = prompt;
+  document.getElementById('emP').style.display = 'none';
+  document.getElementById('pBody').style.display = 'block';
+}
+
+function copyPrompt() {
+  navigator.clipboard.writeText(document.getElementById('pText').textContent)
+    .then(()=>toast('Prompt copiado ✓','ok'));
+}
+
+// ── GENERATE ACTA ──
+async function genActa() {
+  if (!txData) { toast('Primero transcribe el audio','err'); return; }
+  gotoTab('acta');
+  document.getElementById('emA').style.display='none';
+  document.getElementById('aBody').style.display='block';
+  document.getElementById('genInd').classList.add('show');
+  document.getElementById('aText').textContent='';
+
+  const prompt = document.getElementById('pText').textContent;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const text = (d.content||[]).map(b=>b.text||'').join('');
+    acta = text;
+    document.getElementById('aText').textContent = text;
+    toast('Acta generada ✓','ok');
+  } catch {
+    acta = `✅ TRANSCRIPCIÓN LISTA — SIGUE ESTOS PASOS PARA GENERAR EL ACTA:
+
+1. Ve a la pestaña "Prompt para Claude"
+2. Haz clic en "📋 Copiar prompt"
+3. Abre claude.ai en una nueva pestaña
+4. Pega el texto y presiona Enter
+5. Claude generará el acta completa en segundos
+
+El prompt ya incluye toda la transcripción con nombres y empresas de cada orador.`;
+    document.getElementById('aText').textContent = acta;
+    toast('Copia el prompt y pégalo en Claude.ai','info');
+  } finally {
+    document.getElementById('genInd').classList.remove('show');
+  }
+}
+
+function copyActa() {
+  navigator.clipboard.writeText(acta).then(()=>toast('Acta copiada ✓','ok'));
+}
+function dlActa() {
+  const num = document.getElementById('numC').value||'comite';
+  const b = new Blob([acta],{type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = `Acta_Comite_${num}_BodegaCafe.txt`;
+  a.click();
+}
+</script>
+</body>
+</html>
